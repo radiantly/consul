@@ -68,10 +68,9 @@ type CAManager struct {
 	providerRoot *structs.CARoot
 
 	// stateLock protects the internal state used for administrative CA tasks.
-	stateLock         sync.Mutex
-	state             caState
-	primaryRoots      structs.IndexedCARoots // The most recently seen state of the root CAs from the primary datacenter.
-	actingSecondaryCA bool                   // True if this datacenter has been initialized as a secondary CA.
+	stateLock    sync.Mutex
+	state        caState
+	primaryRoots structs.IndexedCARoots // The most recently seen state of the root CAs from the primary datacenter.
 
 	leaderRoutineManager *routine.Manager
 	// providerShim is used to test CAManager with a fake provider.
@@ -287,6 +286,15 @@ func (c *CAManager) getCAProvider() (ca.Provider, *structs.CARoot) {
 	}
 }
 
+// TODO: if the retry in getCAProvider is removed, this function could be replaced
+// by getCAProvider. That retry seems like it is in the wrong place...
+func (c *CAManager) providerInitialized() bool {
+	c.providerLock.RLock()
+	provider := c.provider
+	c.providerLock.RUnlock()
+	return provider != nil
+}
+
 // setCAProvider is being called while holding the stateLock
 // which means it must never take that lock itself or call anything that does.
 func (c *CAManager) setCAProvider(newProvider ca.Provider, root *structs.CARoot) {
@@ -327,7 +335,6 @@ func (c *CAManager) Stop() {
 
 	c.setState(caStateUninitialized, false)
 	c.primaryRoots = structs.IndexedCARoots{}
-	c.actingSecondaryCA = false
 	c.setCAProvider(nil, nil)
 }
 
@@ -1135,7 +1142,7 @@ func (c *CAManager) RenewIntermediate(ctx context.Context, isPrimary bool) error
 		return nil
 	}
 	// If this isn't the primary, make sure the CA has been initialized.
-	if !isPrimary && !c.secondaryIsCAConfigured() {
+	if !isPrimary && !c.providerInitialized() {
 		return fmt.Errorf("secondary CA is not yet configured.")
 	}
 
@@ -1265,25 +1272,25 @@ func (c *CAManager) secondaryUpdateRoots(roots structs.IndexedCARoots) error {
 		// this happens when leadership is being revoked and this go routine will be stopped
 		return nil
 	}
-	if !c.secondaryIsCAConfigured() {
+	if !c.providerInitialized() {
 		versionOk, primaryFound := ServersInDCMeetMinimumVersion(c.delegate, c.serverConf.PrimaryDatacenter, minMultiDCConnectVersion)
 		if !primaryFound {
 			return fmt.Errorf("Primary datacenter is unreachable - deferring secondary CA initialization")
 		}
 
-		if versionOk {
-			if err := c.secondaryInitializeProvider(provider, roots); err != nil {
-				return fmt.Errorf("Failed to initialize secondary CA provider: %v", err)
-			}
+		if !versionOk {
+			// Servers not all upgraded yet
+			return nil
+		}
+		if err := c.secondaryInitializeProvider(provider, roots); err != nil {
+			return fmt.Errorf("Failed to initialize secondary CA provider: %v", err)
 		}
 	}
 
 	// Run the secondary CA init routine to see if we need to request a new
 	// intermediate.
-	if c.secondaryIsCAConfigured() {
-		if err := c.secondaryInitializeIntermediateCA(provider, nil); err != nil {
-			return fmt.Errorf("Failed to initialize the secondary CA: %v", err)
-		}
+	if err := c.secondaryInitializeIntermediateCA(provider, nil); err != nil {
+		return fmt.Errorf("Failed to initialize the secondary CA: %v", err)
 	}
 
 	return nil
@@ -1311,29 +1318,7 @@ func (c *CAManager) secondaryInitializeProvider(provider ca.Provider, roots stru
 	if err := provider.Configure(pCfg); err != nil {
 		return fmt.Errorf("error configuring provider: %v", err)
 	}
-
-	return c.secondarySetCAConfigured()
-}
-
-// secondarySetCAConfigured sets the flag for acting as a secondary CA to true.
-func (c *CAManager) secondarySetCAConfigured() error {
-	c.stateLock.Lock()
-	defer c.stateLock.Unlock()
-
-	if c.state == caStateInitializing || c.state == caStateReconfig {
-		c.actingSecondaryCA = true
-	} else {
-		return fmt.Errorf("Cannot update secondary CA flag in state %q", c.state)
-	}
-
 	return nil
-}
-
-// secondaryIsCAConfigured returns true if we have been initialized as a secondary datacenter's CA.
-func (c *CAManager) secondaryIsCAConfigured() bool {
-	c.stateLock.Lock()
-	defer c.stateLock.Unlock()
-	return c.actingSecondaryCA
 }
 
 type connectSignRateLimiter struct {
