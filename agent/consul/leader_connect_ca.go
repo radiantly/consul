@@ -249,6 +249,10 @@ func (c *CAManager) getCAProvider() (ca.Provider, *structs.CARoot) {
 	}
 }
 
+func (c *CAManager) GetProvider() (ca.Provider, *structs.CARoot) {
+	return c.getCAProvider()
+}
+
 // TODO: if the retry in getCAProvider is removed, this function could be replaced
 // by getCAProvider. That retry seems like it is in the wrong place...
 func (c *CAManager) providerInitialized() bool {
