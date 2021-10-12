@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/hashicorp/consul/agent/consul"
+	"github.com/hashicorp/consul/agent/connect/ca/cacore"
 	"github.com/hashicorp/consul/agent/structs"
 )
 
@@ -97,7 +97,7 @@ func (s *HTTPHandlers) ConnectCAConfigurationSet(req *http.Request) (interface{}
 
 	var reply interface{}
 	err := s.agent.RPC("ConnectCA.ConfigurationSet", &args, &reply)
-	if err != nil && err.Error() == consul.ErrStateReadOnly.Error() {
+	if err != nil && err.Error() == cacore.ErrStateReadOnly.Error() {
 		return nil, BadRequestError{
 			Reason: "Provider State is read-only. It must be omitted" +
 				" or identical to the current value",

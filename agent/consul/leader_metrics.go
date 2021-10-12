@@ -72,7 +72,7 @@ func signingCAExpiryMonitor(s *Server) CertExpirationMonitor {
 			},
 			Logger: s.logger.Named(logging.Connect),
 			Query: func() (time.Duration, error) {
-				provider, _ := s.caManager.getCAProvider()
+				provider, _ := s.caManager.GetProvider()
 
 				if _, ok := provider.(ca.PrimaryUsesIntermediate); ok {
 					return getActiveIntermediateExpiry(s)

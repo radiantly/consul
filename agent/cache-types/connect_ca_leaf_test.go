@@ -15,7 +15,7 @@ import (
 
 	"github.com/hashicorp/consul/agent/cache"
 	"github.com/hashicorp/consul/agent/connect"
-	"github.com/hashicorp/consul/agent/consul"
+	"github.com/hashicorp/consul/agent/connect/ca/cacore"
 	"github.com/hashicorp/consul/agent/structs"
 	"github.com/hashicorp/consul/sdk/testutil/retry"
 )
@@ -571,13 +571,13 @@ func TestConnectCALeaf_CSRRateLimiting(t *testing.T) {
 	// behavior when cache is empty and we have to return a nil Value but need to
 	// save state to do the right thing for retry.
 	rpc.On("RPC", "ConnectCA.Sign", mock.Anything, mock.Anything).
-		Return(consul.ErrRateLimited).Once().Run(incRateLimit)
+		Return(cacore.ErrRateLimited).Once().Run(incRateLimit)
 	// Then succeed on second call
 	rpc.On("RPC", "ConnectCA.Sign", mock.Anything, mock.Anything).
 		Return(nil).Run(genCert).Once()
 	// Then be rate limited again on several further calls
 	rpc.On("RPC", "ConnectCA.Sign", mock.Anything, mock.Anything).
-		Return(consul.ErrRateLimited).Twice().Run(incRateLimit)
+		Return(cacore.ErrRateLimited).Twice().Run(incRateLimit)
 	// Then fine after that
 	rpc.On("RPC", "ConnectCA.Sign", mock.Anything, mock.Anything).
 		Return(nil).Run(genCert)
@@ -595,7 +595,7 @@ func TestConnectCALeaf_CSRRateLimiting(t *testing.T) {
 		switch v := result.(type) {
 		case error:
 			require.Error(v)
-			require.Equal(consul.ErrRateLimited.Error(), v.Error())
+			require.Equal(cacore.ErrRateLimited.Error(), v.Error())
 		case cache.FetchResult:
 			t.Fatalf("Expected error")
 		}

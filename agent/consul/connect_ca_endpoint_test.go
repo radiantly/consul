@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/consul/acl"
 	"github.com/hashicorp/consul/agent/connect"
 	ca "github.com/hashicorp/consul/agent/connect/ca"
+	"github.com/hashicorp/consul/agent/connect/ca/cacore"
 	"github.com/hashicorp/consul/agent/structs"
 	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/hashicorp/consul/sdk/testutil/retry"
@@ -972,7 +973,7 @@ func TestConnectCASign_rateLimit(t *testing.T) {
 	for _, err := range errs {
 		if err == nil {
 			successCount++
-		} else if err.Error() == ErrRateLimited.Error() {
+		} else if err.Error() == cacore.ErrRateLimited.Error() {
 			limitedCount++
 		} else {
 			require.NoError(err)
@@ -1053,7 +1054,7 @@ func TestConnectCASign_concurrencyLimit(t *testing.T) {
 		}
 		if err == nil {
 			successCount++
-		} else if err.Error() == ErrRateLimited.Error() {
+		} else if err.Error() == cacore.ErrRateLimited.Error() {
 			limitedCount++
 		} else {
 			require.NoError(err)

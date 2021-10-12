@@ -11,12 +11,11 @@ import (
 
 	"github.com/mitchellh/hashstructure"
 
-	"github.com/hashicorp/consul/lib"
-
 	"github.com/hashicorp/consul/agent/cache"
 	"github.com/hashicorp/consul/agent/connect"
-	"github.com/hashicorp/consul/agent/consul"
+	"github.com/hashicorp/consul/agent/connect/ca/cacore"
 	"github.com/hashicorp/consul/agent/structs"
+	"github.com/hashicorp/consul/lib"
 )
 
 // Recommended name for registration.
@@ -573,7 +572,7 @@ func (c *ConnectCALeaf) generateNewLeaf(req *ConnectCALeafRequest,
 		CSR:          csr,
 	}
 	if err := c.RPC.RPC("ConnectCA.Sign", &args, &reply); err != nil {
-		if err.Error() == consul.ErrRateLimited.Error() {
+		if err.Error() == cacore.ErrRateLimited.Error() {
 			if result.Value == nil {
 				// This was a first fetch - we have no good value in cache. In this case
 				// we just return the error to the caller rather than rely on surprising

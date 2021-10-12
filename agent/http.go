@@ -25,7 +25,7 @@ import (
 	"github.com/hashicorp/consul/acl"
 	"github.com/hashicorp/consul/agent/cache"
 	"github.com/hashicorp/consul/agent/config"
-	"github.com/hashicorp/consul/agent/consul"
+	"github.com/hashicorp/consul/agent/connect/ca/cacore"
 	"github.com/hashicorp/consul/agent/structs"
 	"github.com/hashicorp/consul/agent/uiserver"
 	"github.com/hashicorp/consul/api"
@@ -425,7 +425,7 @@ func (s *HTTPHandlers) wrap(handler endpoint, methods []string) http.HandlerFunc
 
 		isTooManyRequests := func(err error) bool {
 			// Sadness net/rpc can't do nice typed errors so this is all we got
-			return err.Error() == consul.ErrRateLimited.Error()
+			return err.Error() == cacore.ErrRateLimited.Error()
 		}
 
 		addAllowHeader := func(methods []string) {
