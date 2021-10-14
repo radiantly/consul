@@ -372,12 +372,11 @@ jobs:
       - uses: actions/checkout@v2
       - name: Setup dockerfile
         run: |
-          cd .release/
-          git clone https://github.com/hashicorp/docker-consul.git
-          ls -lah
+          git clone https://github.com/hashicorp/docker-consul.git .release/
           CURRENT_TAG_VERSION=${{needs.get-product-version.outputs.product-version}}
-          sed -i -r "s/^(ARG CONSUL_VERSION=).*/\1$CURRENT_TAG_VERSION/" docker-consul/0.X/Dockerfile
-          cat  docker-consul/0.X/Dockerfile
+          sed -i -r "s/^(ARG CONSUL_VERSION=).*/\1$CURRENT_TAG_VERSION/" .release/docker-consul/0.X/Dockerfile
+          cat  .release/docker-consul/0.X/Dockerfile
+
 
       - name: Docker Build (Action)
         uses: hashicorp/actions-docker-build@v1
